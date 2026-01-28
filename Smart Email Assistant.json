@@ -1,0 +1,580 @@
+{
+  "name": "Smart Email Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nconst HIGH_PRIORITY_KEYWORDS = [\n  'interview', 'job offer', 'offer letter',\n  'interview invitation', 'position', 'application',\n  'hiring', 'recruiter', 'hr ',\n  'office', 'meeting', 'deadline',\n  'urgent', 'asap', 'immediate',\n  'manager', 'supervisor', 'client',\n  'project', 'task', 'deliverable',\n  'salary', 'contract', 'agreement'\n];\n\nconst MEDIUM_PRIORITY_KEYWORDS = [\n  'course', 'udemy', 'coursera', 'edx',\n  'tutorial', 'learn', 'training',\n  'certification', 'certificate',\n  'webinar', 'workshop', 'seminar',\n  'tech article', 'programming',\n  'newsletter', 'blog post',\n  'ai ', 'machine learning', 'data science',\n  'python', 'javascript', 'react',\n  'career development', 'skill'\n];\n\nconst LOW_PRIORITY_KEYWORDS = [\n  'sale', 'discount', 'offer', 'deal',\n  'shopping', 'amazon', 'daraz',\n  'order', 'shipping', 'delivery',\n  'unsubscribe', 'promotion',\n  'limited time', 'buy now'\n];\n\nfor (const item of items) {\n  const email = item.json;\n  const content = (email.fullContent || '').toLowerCase();\n\n  let category = '2';\n  let priorityScore = 3;\n  let reason = 'General or unclassified email';\n  let needsReply = false;\n\n  // HIGH PRIORITY CHECK\n  for (const keyword of HIGH_PRIORITY_KEYWORDS) {\n    if (content.includes(keyword)) {\n      category = '0';\n      priorityScore = 9;\n      reason = `High priority (Job/Work) keyword detected: \"${keyword}\"`;\n      needsReply = true;\n      break;\n    }\n  }\n\n  // MEDIUM PRIORITY CHECK\n  if (category === '2') {\n    for (const keyword of MEDIUM_PRIORITY_KEYWORDS) {\n      if (content.includes(keyword)) {\n        category = '1';\n        priorityScore = 6;\n        reason = `Medium priority (Learning/Career) keyword detected: \"${keyword}\"`;\n        needsReply = false;\n        break;\n      }\n    }\n  }\n\n  // LOW PRIORITY CHECK\n  if (category === '2') {\n    for (const keyword of LOW_PRIORITY_KEYWORDS) {\n      if (content.includes(keyword)) {\n        reason = `Low priority (Promotion/Shopping) keyword detected: \"${keyword}\"`;\n        break;\n      }\n    }\n  }\n\n  // LABEL STRATEGY\n  let labelIdsToApply = [];\n  let priorityLabel = '';\n\n  if (category === '0') {\n    priorityLabel = 'High Priority - Job / Work';\n    labelIdsToApply = ['IMPORTANT', 'STARRED'];\n  } else if (category === '1') {\n    priorityLabel = 'Medium Priority - Learning';\n    labelIdsToApply = ['IMPORTANT'];\n  } else {\n    priorityLabel = 'Low Priority - Promotions / Other';\n    labelIdsToApply = [];\n  }\n\n  email.category = category;\n  email.priorityScore = priorityScore;\n  email.priorityLabel = priorityLabel;\n  email.reason = reason;\n  email.needsReply = needsReply;\n  email.labelIdsToApply = labelIdsToApply;\n\n  output.push({ json: email });\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        2336
+      ],
+      "id": "e0a1621e-45b5-4727-b60d-96488e4aac73",
+      "name": "Classify Email Priority"
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ $json.category }}"
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        2032
+      ],
+      "id": "93790e40-3bde-4192-b859-a17de0807e40",
+      "name": "Route by Priority"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.messageId }}",
+        "labelIds": "={{ $json.labelIdsToApply }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        1888
+      ],
+      "id": "68f433da-bfb0-4d5e-bfda-b1c1b265fb29",
+      "name": "Label High Priority",
+      "webhookId": "3b6875a7-32df-4ec6-9c33-a90b77fa455b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CM6pXRF6Db28B6fD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.messageId }}",
+        "labelIds": "={{ $json.labelIdsToApply }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        2048
+      ],
+      "id": "07370fa9-c529-4236-b002-4799505de019",
+      "name": "Label Medium Priority",
+      "webhookId": "3b6875a7-32df-4ec6-9c33-a90b77fa455b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CM6pXRF6Db28B6fD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.messageId }}",
+        "labelIds": "={{ $json.labelIdsToApply }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        2208
+      ],
+      "id": "7b2e89fc-b7d5-4546-819c-7c99479b2df5",
+      "name": "Label Low Priority",
+      "webhookId": "3b6875a7-32df-4ec6-9c33-a90b77fa455b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CM6pXRF6Db28B6fD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=You are a professional email assistant.\n\nYour task is to draft a clear, polite, and professional reply to the received email shown below:\n\n{{ $json.bodyText }}\n\nRules and instructions:\n\n1. Start the email body with:\n   Dear [Recipient Name],\n\n   - [Recipient Name] must be the extracted sender name from the original email.\n\n2. Use the following template as the base structure:\n\n   Dear [Recipient Name],\n\n   Thank you for your email. I appreciate the opportunity to discuss this further.\n\n   I am available for the proposed meeting on [date and time]. Please let me know if this works for you or if you would prefer another time.\n\n   Looking forward to your confirmation.\n\n   Best regards,\n   Muqadas Ejaz\n\n3. Replace:\n   - [Recipient Name] with the sender's name extracted from the email.\n   - [date and time] with the date or time mentioned in the original email. If no date or time is mentioned, politely state availability without inventing details.\n   - The sender name must NOT be repeated at the end.\n\n4. Tone must be professional, concise, and polite.\n\n5. Do NOT include:\n   - Explanations\n   - Placeholders\n   - Metadata\n   - Markdown\n   - Extra commentary\n\n6. Return the response in the following **JSON format only**:\n\n{\n  \"subject\": \"Professional and relevant email subject based on the original email\",\n  \"body\": \"The full email body, properly formatted and ready to send\",\n  \"senderEmail\": \"{{ $json.senderEmail }}\"\n}\n"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        1888
+      ],
+      "id": "19270541-7a4e-4264-bdb0-555eda7ab1e8",
+      "name": "Draft High Priority Reply",
+      "credentials": {
+        "openAiApi": {
+          "id": "hwWf0Oj09wEDyQlz",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=Inputs:\n- senderEmail: {{ $json.senderEmail }}\n- senderName: {{ $json.senderName }}\n- bodyText: {{ $json.bodyText }}\n\nTask:\nDraft a simple, professional, polite email response about courses, skill development, or learning opportunities. The email should be concise, suitable for medium priority follow-up.\n\nRules:\n1. Start with \"Dear [Recipient Name],\" using senderName if available; otherwise, use a generic greeting.\n2. Body should politely inquire about courses, skill opportunities, workshops, or learning resources.\n3. Tone must be professional, polite, and concise.\n4. End with \"Best regards, Muqadas Ejaz\".\n5. Do NOT include explanations, metadata, placeholders, or extra commentary.\n6. Always return JSON in this exact format:\n\n{\n  \"subject\": \"Professional and relevant subject line based on email context\",\n  \"body\": \"Full email body, ready to send\",\n  \"senderEmail\": \"{{ $json.senderEmail }}\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        2048
+      ],
+      "id": "bb9b55a6-0bfe-4603-b3e9-c7dad837af85",
+      "name": "Draft Medium Priority Reply",
+      "credentials": {
+        "openAiApi": {
+          "id": "hwWf0Oj09wEDyQlz",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=You are an assistant that categorizes low-priority emails. \nEmail Subject: {{ $json.subject }}\nEmail Body: {{ $json.bodyText }}\nEmail Sender: {{ $json.senderEmail }}\n\nRules:\n- Identify if it's a promotion, sales offer, or advertisement.\n- Suggest an appropriate action like 'Archive', 'Save for Later', or 'Ignore'.\n- Return JSON only: { \"suggestion\": \"<your suggestion here>\", \"senderEmail\": \"{{ $json.senderEmail }}\" }\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        2208
+      ],
+      "id": "1bb146e3-2b2a-45d4-bb82-26111e2d225f",
+      "name": "Generate Low Priority Suggestion",
+      "credentials": {
+        "openAiApi": {
+          "id": "hwWf0Oj09wEDyQlz",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst replies = [];\n\nfor (const item of items) {\n  const rawText = item.json.output?.[0]?.content?.[0]?.text || '';\n\n  let parsed = {};\n  try {\n    const cleanText = rawText.trim();\n    parsed = JSON.parse(cleanText);\n  } catch (e) {\n    parsed = { subject: '(No Subject)', body: cleanText || '', senderEmail: '' };\n  }\n\n  const reply = {\n    subject: parsed.subject || '(No Subject)',\n    body: parsed.body || '',\n    senderEmail: parsed.senderEmail || item.json.senderEmail || ''\n  };\n\n  replies.push({ json: reply });\n}\n\nreturn replies;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        1888
+      ],
+      "id": "24b1c5c5-7b66-4929-8bf1-e702921ecaf0",
+      "name": "Parse High Priority Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst replies = [];\n\nfor (const item of items) {\n  const rawText = item.json.output?.[0]?.content?.[0]?.text || '{}';\n  let parsed = {};\n  try {\n    parsed = JSON.parse(rawText.trim());\n  } catch (e) {\n    parsed = { subject: 'No Subject', body: 'No Body Text', senderEmail: 'unknown@example.com' };\n  }\n\n  replies.push({\n    json: {\n      subject: parsed.subject || 'No Subject',\n      bodyText: parsed.body || 'No Body Text',\n      senderEmail: parsed.senderEmail || 'unknown@example.com'\n    }\n  });\n}\n\nreturn replies;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        2048
+      ],
+      "id": "144c04da-c5f4-4df3-b092-8d02586d8687",
+      "name": "Parse Medium Priority Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const rawText = item.json.output?.[0]?.content?.[0]?.text || '{}';\n  let parsed = {};\n  try {\n    parsed = JSON.parse(rawText);\n  } catch (e) {\n    parsed = { suggestion: 'Review manually' };\n  }\n  output.push({ \n    json: { \n      suggestion: parsed.suggestion || 'Review manually', \n      senderEmail: parsed.senderEmail || item.json.senderEmail || 'unknown@example.com'\n    } \n  });\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        2208
+      ],
+      "id": "b7429def-5111-4831-ba6a-ccb6ccd4df5d",
+      "name": "Parse Low Priority Response"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.senderEmail }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        1968
+      ],
+      "id": "f5b0655d-a977-4715-808a-3ce6e7db554a",
+      "name": "Send Auto-Reply",
+      "webhookId": "4e370ac5-275d-4a41-84d9-ce035ed17e53",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CM6pXRF6Db28B6fD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.bodyText }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        2208
+      ],
+      "id": "621f35e4-729f-43c9-8b26-6b61c102a3b1",
+      "name": "Create Draft",
+      "webhookId": "0f0d711f-31aa-4fc9-9bba-0444ddc860e1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CM6pXRF6Db28B6fD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -512,
+        2048
+      ],
+      "id": "df184920-3694-468e-8212-bb0fa0fa17c8",
+      "name": "Gmail Trigger1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CM6pXRF6Db28B6fD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst emails = [];\n\nfor (const item of items) {\n  // Extract From, To, Subject\n  let rawFrom = '';\n  if (item.json.from && item.json.from.value) {\n    const sender = item.json.from.value[0];\n    rawFrom = sender.name ? `${sender.name} <${sender.address}>` : sender.address;\n  }\n\n  let rawTo = '';\n  if (item.json.to && item.json.to.value) {\n    rawTo = item.json.to.value.map(v => v.address).join(', ');\n  }\n\n  const rawSubject = item.json.subject || '(No Subject)';\n\n  // Sender name and email\n  let senderName = '';\n  let senderEmail = '';\n  if (rawFrom.includes('<') && rawFrom.includes('>')) {\n    const match = rawFrom.match(/<(.+?)>/);\n    senderEmail = match ? match[1] : rawFrom;\n    senderName = rawFrom.split('<')[0].trim();\n  } else if (rawFrom.includes('@')) {\n    senderEmail = rawFrom.trim();\n    senderName = rawFrom.split('@')[0];\n  } else {\n    senderEmail = 'unknown@email.com';\n    senderName = 'Unknown Sender';\n  }\n\n  // Body text\n  const bodyText = item.json.text || '';\n  const snippet = bodyText.substring(0, 200);\n\n  const email = {\n    messageId: item.json.id || '',\n    threadId: item.json.threadId || item.json.id || '',\n    from: rawFrom,\n    senderEmail,\n    senderName,\n    to: rawTo,\n    subject: rawSubject,\n    bodyText,\n    snippet,\n    date: item.json.date || new Date().toISOString(),\n    labels: item.json.labels || [],\n    fullContent: `${rawSubject} ${bodyText}`.toLowerCase()\n  };\n\n  emails.push({ json: email });\n}\n\nreturn emails;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        2048
+      ],
+      "id": "76720ffd-55e2-4edb-9c53-35b0d2b87b34",
+      "name": "Extract Email Information1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  output.push({\n    json: {\n      senderEmail: item.json.senderEmail || 'unknown@example.com'\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        2512
+      ],
+      "id": "6832dd13-49cc-4732-9cf3-1861c9042ba4",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        1968
+      ],
+      "id": "e3bb41d6-80fe-4c41-a178-0cb25e04ed75",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1360,
+        2208
+      ],
+      "id": "c6e3bf96-c3f2-4afd-9e9c-3db6fd8812b5",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Classify Email Priority": {
+      "main": [
+        [
+          {
+            "node": "Route by Priority",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Priority": {
+      "main": [
+        [
+          {
+            "node": "Label High Priority",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Medium Priority",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Low Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label High Priority": {
+      "main": [
+        [
+          {
+            "node": "Draft High Priority Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label Medium Priority": {
+      "main": [
+        [
+          {
+            "node": "Draft Medium Priority Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label Low Priority": {
+      "main": [
+        [
+          {
+            "node": "Generate Low Priority Suggestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft High Priority Reply": {
+      "main": [
+        [
+          {
+            "node": "Parse High Priority Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Medium Priority Reply": {
+      "main": [
+        [
+          {
+            "node": "Parse Medium Priority Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Low Priority Suggestion": {
+      "main": [
+        [
+          {
+            "node": "Parse Low Priority Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse High Priority Response": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Medium Priority Response": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Extract Email Information1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Email Information1": {
+      "main": [
+        [
+          {
+            "node": "Classify Email Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Send Auto-Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Create Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "8eb89cd3-423b-4620-8703-707b5046c8e9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1c544d22e690d204287ffa59ea888305c0159a92d46d45f414a572e439d4adf1"
+  },
+  "id": "9ZR_EDr6iLeLVsKfyrWS5",
+  "tags": []
+}
