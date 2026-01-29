@@ -108,9 +108,13 @@ It is designed for professionals who want to reduce inbox overload while ensurin
 - AI-generated professional reply
 - Reply automatically sent to sender
 
+- **Input**
+
+<img width="1606" height="520" alt="high input" src="https://github.com/user-attachments/assets/ab9c7c72-a527-4d42-b377-4423bca12891" />
+
 - **Output**
   
- <img width="1607" height="571" alt="high Pri" src="https://github.com/user-attachments/assets/5d64ceea-1f72-4d6a-bdb6-2b7839f9fd70" />
+<img width="1609" height="551" alt="High output" src="https://github.com/user-attachments/assets/d7093a78-38eb-41d8-acba-44522fa124b0" />
 
 
 ### Medium Priority Emails
